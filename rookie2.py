@@ -1,5 +1,8 @@
 import pymysql as py
 import pandas as pd
+import pymysql
+from sqlalchemy import create_engine
+
 Host = '192.168.0.187'
 Port = 3306
 User = 'root'
@@ -32,6 +35,9 @@ barInfo = {
     43200: "12h",
     86400: "1d"
 }
+proxies = {'https': 'http://127.0.0.1:7890'}
+mysql_connect = create_engine('mysql+pymysql://root:123456@192.168.0.187:3306/trade?charset=utf8')
+
 
 def conn_mysql(trad1, trad2, bar):
     db = py.connect(host=Host, port=Port, user=User, password=Password,
@@ -52,12 +58,22 @@ def calculateMACD(trad1, trad2, bar,db,cur):
     df.columns = ["id","symbol","sysdatetime","cndatetime","interval","volume","open_price","high_price","low_price","close_price"]
 
     paras = []
-    for i in range(1, 251):
-        paras.append(i)
-    for para in paras:
-        df['EMA_' + str(para)] = pd.DataFrame.ewm(df['close_price'], span=para).mean()
+    df['EMA_' + '6'] = pd.DataFrame.ewm(df['close_price'], span=6).mean()
+    df['EMA_' + '12'] = pd.DataFrame.ewm(df['close_price'], span=12).mean()
+    df['EMA_' + '13'] = pd.DataFrame.ewm(df['close_price'], span=13).mean()
+    df['EMA_' + '24'] = pd.DataFrame.ewm(df['close_price'], span=24).mean()
+    df['EMA_' + '26'] = pd.DataFrame.ewm(df['close_price'], span=26).mean()
+    df['EMA_' + '52'] = pd.DataFrame.ewm(df['close_price'], span=52).mean()
+    df['EMA_' + '78'] = pd.DataFrame.ewm(df['close_price'], span=78).mean()
+    df['EMA_' + '104'] = pd.DataFrame.ewm(df['close_price'], span=104).mean()
+
+    print(df)
+    df['DIFF'] = df['EMA_12'] - df['EMA_26']
+    df['DEA'] = pd.DataFrame.ewm(df['DIFF'], span=9).mean()
+    df['MACD'] = 2*(df['DIFF']  - df['DEA'])
     print(df)
 
+    pd.io.sql.to_sql(df, 'macd5', mysql_connect,  if_exists='replace', index=False)
 
 if __name__ == '__main__':
-    conn_mysql("BTC", "USD", 86400)
+    conn_mysql("BTC", "USD", 300)
